@@ -8,6 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChurchIcon } from '@/components/icons/church-icons';
@@ -24,6 +26,8 @@ type MediaItem = {
   image: ImageSourcePropType;
 };
 
+const walkingInFaithThumbnail = { uri: 'https://img.youtube.com/vi/FU0AACqGqlk/hqdefault.jpg' };
+
 const continuingSermon: MediaItem = {
   category: 'Living by Faith',
   title: 'Walking in Faith',
@@ -31,7 +35,7 @@ const continuingSermon: MediaItem = {
   description: 'Learning to trust God fully when the path ahead is not yet clear.',
   date: 'April 6, 2026',
   duration: '25.00',
-  image: require('@/assets/images/sermon-walking-in-faith.png'),
+  image: walkingInFaithThumbnail,
 };
 
 const latestSermons: MediaItem[] = [
@@ -104,36 +108,76 @@ function itemMatches(item: MediaItem, query: string, category: string) {
     .includes(normalizedQuery);
 }
 
-function PlayButton({ large = false }: { large?: boolean }) {
+function PlayButton({ large = false, onPress }: { large?: boolean; onPress?: () => void }) {
   const size = large ? 32 : 24;
   const iconSize = large ? 15 : 13;
+  const Container = onPress ? Pressable : View;
 
   return (
-    <View
+    <Container
       style={{ height: size, width: size }}
+      onPress={onPress}
       className="items-center justify-center rounded-full border-2 border-[#FF6B00] bg-black/20">
       <ChurchIcon name="play" size={iconSize} color="#FF6B00" />
-    </View>
+    </Container>
   );
 }
 
-function SermonThumbnail({ image }: { image: ImageSourcePropType }) {
+function SermonThumbnail({ image, onPlay }: { image: ImageSourcePropType; onPlay: () => void }) {
   return (
     <View className="relative h-[110px] w-[126px] overflow-hidden rounded-[12px]">
       <Image source={image} className="h-full w-full" resizeMode="cover" />
       <View className="absolute inset-0 items-center justify-center">
-        <PlayButton />
+        <PlayButton onPress={onPlay} />
       </View>
     </View>
   );
 }
 
-function SermonCard({ item }: { item: MediaItem }) {
-  return (
-    <View className="flex-row rounded-[12px] bg-white p-[10px]">
-      <SermonThumbnail image={item.image} />
+function MediaMenu({ onClose }: { onClose: () => void }) {
+  const actions: { label: string; icon: keyof typeof Feather.glyphMap }[] = [
+    { label: 'Save', icon: 'bookmark' },
+    { label: 'Download', icon: 'download' },
+    { label: 'Share', icon: 'upload' },
+  ];
 
-      <View className="ml-3 min-w-0 flex-1">
+  return (
+    <View className="absolute right-[10px] top-[42px] z-30 w-[112px] rounded-[8px] bg-white px-3 py-2 shadow-lg">
+      {actions.map((action) => (
+        <Pressable
+          key={action.label}
+          className="h-[30px] flex-row items-center"
+          onPress={onClose}>
+          <Feather name={action.icon} size={13} color="#FF6B00" />
+          <Text className="ml-2 text-[10px] font-semibold text-ihnbc-black">{action.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function SermonCard({
+  item,
+  menuOpen,
+  onOpen,
+  onPlay,
+  onToggleMenu,
+  onCloseMenu,
+}: {
+  item: MediaItem;
+  menuOpen: boolean;
+  onOpen: () => void;
+  onPlay: () => void;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+}) {
+  return (
+    <View className={`relative flex-row rounded-[12px] bg-white p-[10px] ${menuOpen ? 'z-20' : 'z-0'}`}>
+      <Pressable onPress={onPlay}>
+        <SermonThumbnail image={item.image} onPlay={onPlay} />
+      </Pressable>
+
+      <Pressable className="ml-3 min-w-0 flex-1" onPress={onOpen}>
         <View className="flex-row items-start justify-between gap-2">
           <View className="min-w-0 flex-1">
             <Text className="text-[9px] font-bold text-[#FF6B00]">{item.category}</Text>
@@ -141,7 +185,6 @@ function SermonCard({ item }: { item: MediaItem }) {
               {item.title}
             </Text>
           </View>
-          <ChurchIcon name="more-vertical" size={18} color="#777777" />
         </View>
 
         <Text className="mt-1 text-[12px] font-medium text-[#777777]">{item.speaker}</Text>
@@ -151,20 +194,47 @@ function SermonCard({ item }: { item: MediaItem }) {
           <ChurchIcon name="calendar" size={11} color="#777777" />
           <Text className="text-[10px] text-[#777777]">{item.date}</Text>
           <Text className="text-[10px] text-[#777777]">.</Text>
-          <ChurchIcon name="eye" size={12} color="#777777" />
+          <ChurchIcon name="clock" size={12} color="#777777" />
           <Text className="text-[10px] text-[#777777]">{item.duration}</Text>
         </View>
-      </View>
+      </Pressable>
+
+      <Pressable className="absolute right-2 top-2 h-7 w-7 items-center justify-center" onPress={onToggleMenu}>
+        <ChurchIcon name="more-vertical" size={18} color="#777777" />
+      </Pressable>
+
+      {menuOpen && (
+        <>
+          <Pressable className="absolute inset-0 z-10 rounded-[12px] bg-black/20" onPress={onCloseMenu} />
+          <MediaMenu onClose={onCloseMenu} />
+        </>
+      )}
     </View>
   );
 }
 
-function FeaturedPodcastCard({ item }: { item: MediaItem }) {
+function FeaturedPodcastCard({
+  item,
+  menuOpen,
+  onOpen,
+  onPlay,
+  onToggleMenu,
+  onCloseMenu,
+}: {
+  item: MediaItem;
+  menuOpen: boolean;
+  onOpen: () => void;
+  onPlay: () => void;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+}) {
   return (
-    <View className="flex-row rounded-[12px] bg-white p-[13px]">
-      <Image source={item.image} className="h-[92px] w-[92px] rounded-[10px]" resizeMode="cover" />
+    <View className={`relative flex-row rounded-[12px] bg-white p-[13px] ${menuOpen ? 'z-20' : 'z-0'}`}>
+      <Pressable onPress={onOpen}>
+        <Image source={item.image} className="h-[92px] w-[92px] rounded-[10px]" resizeMode="cover" />
+      </Pressable>
 
-      <View className="ml-3 min-w-0 flex-1">
+      <Pressable className="ml-3 min-w-0 flex-1" onPress={onOpen}>
         <View className="flex-row items-start justify-between">
           <View className="min-w-0 flex-1 pr-2">
             <Text className="text-[15px] font-extrabold leading-[19px] text-ihnbc-black">
@@ -172,14 +242,13 @@ function FeaturedPodcastCard({ item }: { item: MediaItem }) {
             </Text>
             <Text className="mt-2 text-[10px] leading-[13px] text-[#777777]">{item.description}</Text>
           </View>
-          <ChurchIcon name="more-vertical" size={18} color="#777777" />
         </View>
 
         <View className="mt-3 flex-row items-center">
-          <PlayButton />
+          <PlayButton onPress={onPlay} />
           <Text className="ml-2 text-[10px] text-[#777777]">{item.category}</Text>
           <View className="ml-auto">
-            <PlayButton large />
+            <PlayButton large onPress={onPlay} />
           </View>
         </View>
 
@@ -193,17 +262,42 @@ function FeaturedPodcastCard({ item }: { item: MediaItem }) {
           <ChurchIcon name="eye" size={12} color="#777777" />
           <Text className="text-[10px] text-[#777777]">{item.duration}</Text>
         </View>
-      </View>
+      </Pressable>
+
+      <Pressable className="absolute right-2 top-2 h-7 w-7 items-center justify-center" onPress={onToggleMenu}>
+        <ChurchIcon name="more-vertical" size={18} color="#777777" />
+      </Pressable>
+
+      {menuOpen && (
+        <>
+          <Pressable className="absolute inset-0 z-10 rounded-[12px] bg-black/20" onPress={onCloseMenu} />
+          <MediaMenu onClose={onCloseMenu} />
+        </>
+      )}
     </View>
   );
 }
 
-function PodcastCard({ item }: { item: MediaItem }) {
+function PodcastCard({
+  item,
+  menuOpen,
+  onOpen,
+  onToggleMenu,
+  onCloseMenu,
+}: {
+  item: MediaItem;
+  menuOpen: boolean;
+  onOpen: () => void;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+}) {
   return (
-    <View className="flex-row rounded-[12px] bg-white p-[13px]">
-      <Image source={item.image} className="h-[78px] w-[78px] rounded-[10px]" resizeMode="cover" />
+    <View className={`relative flex-row rounded-[12px] bg-white p-[13px] ${menuOpen ? 'z-20' : 'z-0'}`}>
+      <Pressable onPress={onOpen}>
+        <Image source={item.image} className="h-[78px] w-[78px] rounded-[10px]" resizeMode="cover" />
+      </Pressable>
 
-      <View className="ml-3 min-w-0 flex-1">
+      <Pressable className="ml-3 min-w-0 flex-1" onPress={onOpen}>
         <View className="flex-row items-start justify-between">
           <View className="min-w-0 flex-1 pr-2">
             <Text className="text-[15px] font-extrabold leading-[19px] text-ihnbc-black">
@@ -211,7 +305,6 @@ function PodcastCard({ item }: { item: MediaItem }) {
             </Text>
             <Text className="mt-2 text-[10px] leading-[13px] text-[#777777]">{item.description}</Text>
           </View>
-          <ChurchIcon name="more-vertical" size={18} color="#777777" />
         </View>
 
         <View className="mt-4 flex-row items-center gap-2">
@@ -223,16 +316,29 @@ function PodcastCard({ item }: { item: MediaItem }) {
             <ChurchIcon name="download" size={19} color="#777777" />
           </View>
         </View>
-      </View>
+      </Pressable>
+
+      <Pressable className="absolute right-2 top-2 h-7 w-7 items-center justify-center" onPress={onToggleMenu}>
+        <ChurchIcon name="more-vertical" size={18} color="#777777" />
+      </Pressable>
+
+      {menuOpen && (
+        <>
+          <Pressable className="absolute inset-0 z-10 rounded-[12px] bg-black/20" onPress={onCloseMenu} />
+          <MediaMenu onClose={onCloseMenu} />
+        </>
+      )}
     </View>
   );
 }
 
 export default function TheWordScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ContentTab>('sermons');
   const [query, setQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [openMediaMenu, setOpenMediaMenu] = useState<string | null>(null);
 
   const currentItems = useMemo(
     () =>
@@ -255,12 +361,36 @@ export default function TheWordScreen() {
     setActiveTab(tab);
     setActiveCategory('All');
     setFilterOpen(false);
+    setOpenMediaMenu(null);
+  }
+
+  function openMediaDetail(item: MediaItem, type: ContentTab, shouldPlay = false) {
+    setOpenMediaMenu(null);
+    router.push({
+      pathname: '/word-detail',
+      params: {
+        title: item.title,
+        type: type === 'sermons' ? 'sermon' : 'podcast',
+        play: shouldPlay ? '1' : '0',
+      },
+    });
   }
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-[#F8F8F8]">
-      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => setOpenMediaMenu(null)}>
         <View className="px-6 pb-32 pt-[22px]">
+          {openMediaMenu && (
+            <Pressable
+              className="absolute inset-0 z-10 bg-black/20"
+              onPress={() => setOpenMediaMenu(null)}
+            />
+          )}
+
           <View className="h-[48px] flex-row items-center rounded-[16px] bg-white px-[14px]">
             <View className="flex-1">
               <Text className="text-[18px] font-extrabold leading-[22px] text-ihnbc-black">
@@ -293,7 +423,7 @@ export default function TheWordScreen() {
 
           <View className="mt-3 flex-row gap-4">
             <View className="h-[38px] flex-1 flex-row items-center rounded-[12px] bg-white px-3">
-              <ChurchIcon name="search" size={18} color="#777777" />
+              <ChurchIcon name="search" size={18} color="#E25D1A" />
               <TextInput
                 value={query}
                 onChangeText={setQuery}
@@ -339,18 +469,39 @@ export default function TheWordScreen() {
               </Text>
               {filteredContinuing && (
                 <View className="mt-3">
-                  <SermonCard item={continuingSermon} />
+                  <SermonCard
+                    item={continuingSermon}
+                    menuOpen={openMediaMenu === continuingSermon.title}
+                    onOpen={() => openMediaDetail(continuingSermon, 'sermons')}
+                    onPlay={() => openMediaDetail(continuingSermon, 'sermons', true)}
+                    onToggleMenu={() =>
+                      setOpenMediaMenu((current) =>
+                        current === continuingSermon.title ? null : continuingSermon.title
+                      )
+                    }
+                    onCloseMenu={() => setOpenMediaMenu(null)}
+                  />
                 </View>
               )}
 
               <View className="mb-3 mt-4 flex-row items-center justify-between">
                 <Text className="text-[14px] font-semibold text-ihnbc-black">Latest Sermons</Text>
-                <Text className="text-[9px] font-medium text-[#FF6B00]">View all</Text>
+                <Text className="text-[11px] font-medium text-[#FF6B00]">View all</Text>
               </View>
 
               <View className="gap-4">
                 {filteredLatestSermons.map((item) => (
-                  <SermonCard key={item.title} item={item} />
+                  <SermonCard
+                    key={item.title}
+                    item={item}
+                    menuOpen={openMediaMenu === item.title}
+                    onOpen={() => openMediaDetail(item, 'sermons')}
+                    onPlay={() => openMediaDetail(item, 'sermons', true)}
+                    onToggleMenu={() =>
+                      setOpenMediaMenu((current) => (current === item.title ? null : item.title))
+                    }
+                    onCloseMenu={() => setOpenMediaMenu(null)}
+                  />
                 ))}
               </View>
             </>
@@ -361,7 +512,18 @@ export default function TheWordScreen() {
               </Text>
               {filteredFeaturedPodcast && (
                 <View className="mt-3">
-                  <FeaturedPodcastCard item={featuredPodcast} />
+                  <FeaturedPodcastCard
+                    item={featuredPodcast}
+                    menuOpen={openMediaMenu === featuredPodcast.title}
+                    onOpen={() => openMediaDetail(featuredPodcast, 'podcasts')}
+                    onPlay={() => openMediaDetail(featuredPodcast, 'podcasts', true)}
+                    onToggleMenu={() =>
+                      setOpenMediaMenu((current) =>
+                        current === featuredPodcast.title ? null : featuredPodcast.title
+                      )
+                    }
+                    onCloseMenu={() => setOpenMediaMenu(null)}
+                  />
                 </View>
               )}
 
@@ -370,7 +532,16 @@ export default function TheWordScreen() {
               </Text>
               <View className="gap-4">
                 {filteredPodcasts.map((item) => (
-                  <PodcastCard key={item.title} item={item} />
+                  <PodcastCard
+                    key={item.title}
+                    item={item}
+                    menuOpen={openMediaMenu === item.title}
+                    onOpen={() => openMediaDetail(item, 'podcasts')}
+                    onToggleMenu={() =>
+                      setOpenMediaMenu((current) => (current === item.title ? null : item.title))
+                    }
+                    onCloseMenu={() => setOpenMediaMenu(null)}
+                  />
                 ))}
               </View>
             </>

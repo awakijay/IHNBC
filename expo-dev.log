@@ -1,0 +1,7 @@
+
+> ihnbc@1.0.0 start
+> expo start --web --host localhost
+
+Starting project at C:\Users\HP\IHNBC
+› Port 8081 is being used by another process
+› Skipping dev server

@@ -4,6 +4,9 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Roboto_400Regular'],
+      },
       colors: {
         ihnbc: {
           orange: '#D6781E',
